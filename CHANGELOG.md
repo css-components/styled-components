@@ -6,6 +6,8 @@ _The format is based on [Keep a Changelog](http://keepachangelog.com/) and this 
 
 ## Unreleased
 
+- Restore ability to use placeholder `style` tags to specify SC stylesheets’ position in the DOM, by [@cpmsmith](https://github.com/cpmsmith) (see [#2463](https://github.com/styled-components/styled-components/pull/2463))
+
 - Fix to use `ownerDocument` instead of global `document`, by [@yamachig](https://github.com/yamachig) (see [#2721](https://github.com/styled-components/styled-components/pull/2721))
 
 - Backport fix for SSR classname mismatches in development mode for some environments like next.js (see [#2701](https://github.com/styled-components/styled-components/pull/2701))
