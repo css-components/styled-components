@@ -20,6 +20,7 @@
     "flow:watch": "flow-watch",
     "pretest": "npm run generateErrors",
     "test": "npm run test:web && npm run test:native && npm run test:primitives",
+    "pretest:web": "npm run build",
     "test:web": "jest -c ../../scripts/jest/config.main.js",
     "test:native": "jest -c ../../scripts/jest/config.native.js",
     "test:primitives": "jest -c ../../scripts/jest/config.primitives.js",
@@ -87,6 +88,7 @@
     "react-native": "^0.59.8",
     "react-primitives": "^0.8.0",
     "react-test-renderer": "^16.8.6",
+    "stream-to-promise": "^2.2.0",
     "stylis-plugin-rtl": "^1.0.0"
   },
   "bundlesize": [
