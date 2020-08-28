@@ -27,17 +27,21 @@ function setup() {
   const container = document.createElement('div');
   document.body.appendChild(container);
 
+  const isServer = __SERVER__;
+
   return {
     container,
     render(comp) {
       ReactDOM.render(comp, container);
     },
     renderToString(comp) {
+      global.__SERVER__ = true;
       return ReactDOMServer.renderToString(comp);
     },
     cleanup() {
       resetStyled();
       document.body.removeChild(container);
+      global.__SERVER__ = isServer;
     },
   };
 }
@@ -416,5 +420,12 @@ describe(`createGlobalStyle`, () => {
 
     // Reset DISABLE_SPEEDY flag
     constants.DISABLE_SPEEDY = flag;
+  });
+
+  it(`doesn't duplicate global styles when rendered inside React.StrictMode component`, () => {
+    const { render } = context;
+    const Component = createGlobalStyle`[data-test-inject]{color:red;} `;
+    render(<React.StrictMode><Component /></React.StrictMode>);
+    expectCSSMatches(`[data-test-inject]{color:red;} `);
   });
 });

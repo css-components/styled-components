@@ -1,5 +1,5 @@
 // @flow
-import React, { useContext, useEffect, useRef } from 'react';
+import React, { useContext, useEffect, useLayoutEffect, useRef } from 'react';
 import { STATIC_EXECUTION_CONTEXT } from '../constants';
 import GlobalStyle from '../models/GlobalStyle';
 import { useStyleSheet, useStylis } from '../models/StyleSheetManager';
@@ -13,6 +13,8 @@ import css from './css';
 import type { Interpolation } from '../types';
 
 type GlobalStyleComponentPropsType = Object;
+
+declare var __SERVER__: boolean;
 
 export default function createGlobalStyle(
   strings: Array<string>,
@@ -30,13 +32,6 @@ export default function createGlobalStyle(
     const styleSheet = useStyleSheet();
     const stylis = useStylis();
     const theme = useContext(ThemeContext);
-    const instanceRef = useRef(null);
-
-    if (instanceRef.current === null) {
-      instanceRef.current = styleSheet.allocateGSInstance(styledComponentId);
-    }
-
-    const instance = instanceRef.current;
 
     if (process.env.NODE_ENV !== 'production' && React.Children.count(props.children)) {
       // eslint-disable-next-line no-console
@@ -55,18 +50,37 @@ export default function createGlobalStyle(
       );
     }
 
-    if (globalStyle.isStatic) {
-      globalStyle.renderStyles(instance, STATIC_EXECUTION_CONTEXT, styleSheet, stylis);
-    } else {
-      const context = {
-        ...props,
-        theme: determineTheme(props, theme, GlobalStyleComponent.defaultProps),
-      };
+    const instanceRef = useRef(null);
 
-      globalStyle.renderStyles(instance, context, styleSheet, stylis);
+    function renderGlobalStyles() {
+      if (instanceRef.current === null) {
+        instanceRef.current = styleSheet.allocateGSInstance(styledComponentId);
+      }
+
+      const instance = instanceRef.current;
+
+      if (globalStyle.isStatic) {
+        globalStyle.renderStyles(instance, STATIC_EXECUTION_CONTEXT, styleSheet, stylis);
+      } else {
+        const context = {
+          ...props,
+          theme: determineTheme(props, theme, GlobalStyleComponent.defaultProps),
+        };
+
+        globalStyle.renderStyles(instance, context, styleSheet, stylis);
+      }
     }
 
-    useEffect(() => () => globalStyle.removeStyles(instance, styleSheet), EMPTY_ARRAY);
+    useLayoutEffect(renderGlobalStyles);
+    if (__SERVER__) {
+      renderGlobalStyles();
+    }
+
+    useEffect(() => () => {
+      if (instanceRef.current) {
+        globalStyle.removeStyles(instanceRef.current, styleSheet);
+      }
+    }, EMPTY_ARRAY);
 
     return null;
   }
