@@ -1,6 +1,8 @@
 // @flow
 import React, { createElement, Component } from 'react';
 import hoist from 'hoist-non-react-statics';
+import memoizeOne from 'memoize-one';
+import isEqual from 'react-fast-compare';
 import merge from '../utils/mixinDeep';
 import determineTheme from '../utils/determineTheme';
 import { EMPTY_ARRAY, EMPTY_OBJECT } from '../utils/empties';
@@ -9,6 +11,7 @@ import isFunction from '../utils/isFunction';
 import isTag from '../utils/isTag';
 import isStyledComponent from '../utils/isStyledComponent';
 import { ThemeConsumer } from './ThemeProvider';
+import isElementTypeMemo from '../utils/isElementTypeMemo';
 
 import type { Theme } from './ThemeProvider';
 import type { Attrs, RuleSet, Target } from '../types';
@@ -63,7 +66,10 @@ class StyledNativeComponent extends Component<*, *> {
             }
           }
 
-          propsForElement.style = [generatedStyles].concat(style);
+          const isTargetMemo = !isTargetTag && isElementTypeMemo(elementToBeRendered);
+          propsForElement.style = isTargetMemo
+            ? this.getMemoStyles(generatedStyles, style)
+            : this.getStyles(generatedStyles, style);
 
           if (forwardedRef) propsForElement.ref = forwardedRef;
           if (forwardedAs) propsForElement.as = forwardedAs;
@@ -113,6 +119,12 @@ class StyledNativeComponent extends Component<*, *> {
 
     return inlineStyle.generateStyleObject(executionContext);
   }
+
+  getStyles(generatedStyles, style) {
+    return [generatedStyles].concat(style);
+  }
+
+  getMemoStyles = memoizeOne((generatedStyles, style) => [generatedStyles].concat(style), isEqual);
 
   setNativeProps(nativeProps: Object) {
     if (this.root !== undefined) {
