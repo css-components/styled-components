@@ -1,36 +1,45 @@
 // @flow
-import { addDefault, addNamed } from '@babel/helper-module-imports';
 import traverse from '@babel/traverse';
 import { createMacro } from 'babel-plugin-macros';
 import babelPlugin from 'babel-plugin-styled-components';
 
-function styledComponentsMacro({ references, state, babel: { types: t }, config = {} }) {
-  const program = state.file.path;
-
-  // FIRST STEP : replace `styled-components/macro` by `styled-components
-  // references looks like this
-  // { default: [path, path], css: [path], ... }
-  let customImportName;
-  Object.keys(references).forEach(refName => {
-    // generate new identifier
-    let id;
-    if (refName === 'default') {
-      id = addDefault(program, 'styled-components', { nameHint: 'styled' });
-      customImportName = id;
-    } else {
-      id = addNamed(program, refName, 'styled-components', { nameHint: refName });
-    }
-
-    // update references with the new identifiers
-    references[refName].forEach(referencePath => {
-      // eslint-disable-next-line no-param-reassign
-      referencePath.node.name = id.name;
-    });
+function styledComponentsMacro({ references, source, state, babel: { types }, config = {} }) {
+  // Replace macro imports with `styled-components`.
+  traverse(state.file.ast, {
+    ImportDeclaration(path) {
+      if (path.node.source.value === source) {
+        path.node.source.value = 'styled-components';
+      }
+    },
+    VariableDeclaration(path) {
+      path.node.declarations.forEach(declaration => {
+        if (declaration.init.type === 'CallExpression') {
+          const { callee, arguments: args } = declaration.init;
+          if (
+            callee.type === 'Identifier' &&
+            callee.name === 'require' &&
+            args.length === 1 &&
+            args[0].value === source
+          ) {
+            args[0].value = 'styled-components';
+          }
+        }
+      });
+    },
   });
 
-  // SECOND STEP : apply babel-plugin-styled-components to the file
+  // Find name of default export if it was used.
+  let customImportName;
+  if ('default' in references && references['default'].length > 0) {
+    customImportName = references['default'][0].node.name;
+  }
+
+  // Run Babel plugin.
   const stateWithOpts = { ...state, opts: config, customImportName };
-  traverse(program.parent, babelPlugin({ types: t }).visitor, undefined, stateWithOpts);
+  traverse(state.file.ast, babelPlugin({ types }).visitor, undefined, stateWithOpts);
+
+  // Don't remove the newly-modified import statement.
+  return { keepImports: true };
 }
 
 export default createMacro(styledComponentsMacro, {
